@@ -64,7 +64,7 @@ func (s *Server) setupRoutes() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Put("/upload/{bucket:[a-z-]+}", s.uploadFile)
+	r.Put("/upload/{bucket:[1-9-a-z-]+}", s.uploadFile)
 	s.router = r
 }
 

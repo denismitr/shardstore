@@ -39,7 +39,7 @@ const bufSize = 4 * 1024
 
 func (s *GRPCStore) Put(
 	ctx context.Context,
-	key string,
+	key multishard.Key,
 	serverID multishard.ServerIDX,
 	size int,
 	r io.Reader,
@@ -71,7 +71,7 @@ func (s *GRPCStore) Put(
 		}
 
 		if err := upload.Send(&storeserverv1.UploadRequest{
-			Key:     key,
+			Key:     string(key),
 			Payload: buf[:n],
 		}); err != nil {
 			if errCloseSend := upload.CloseSend(); errCloseSend != nil {

@@ -17,11 +17,11 @@ const (
 )
 
 type shardManager interface {
-	GetMultiShard(key string) (multishard.MultiShard, error)
+	GetMultiShard(key multishard.Key) (multishard.MultiShard, error)
 }
 
 type remoteStorage interface {
-	Put(ctx context.Context, key string, serverID multishard.ServerIDX, size int, r io.Reader) error
+	Put(ctx context.Context, key multishard.Key, serverID multishard.ServerIDX, size int, r io.Reader) error
 }
 
 type metaStorage interface {
@@ -57,7 +57,12 @@ func (p *Processor) Process(
 	errCh := make(chan error, 1)
 	doneCh := make(chan struct{}, 1)
 
-	key := h.Filename
+	key, err := multishard.ResolveKey(h.Filename)
+	if err != nil {
+		return err
+	}
+
+	storeMetaReq := metastore.NewStoreRequest(key, len(p.cfg.StorageServers))
 	multiShard, err := p.shardManager.GetMultiShard(key)
 	if err != nil {
 		return err
@@ -86,7 +91,17 @@ func (p *Processor) Process(
 				int(size),
 				offset,
 			); err != nil {
-				errCh <- err
+				errCh <- err // todo: wrap
+				return
+			}
+
+			// add shard info
+			if err := storeMetaReq.SetShard(int(chunkIdx), metastore.Shard{
+				ChunkIdx:  int(chunkIdx),
+				ServerIdx: int(serverID),
+				Size:      int(size),
+			}); err != nil {
+				errCh <- err // todo: wrap
 				return
 			}
 		}(i, hasResidualBytes)
@@ -103,25 +118,27 @@ func (p *Processor) Process(
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-doneCh:
+		// save metadata about the key and associated shards
+		if err := p.metaStore.Store(ctx, storeMetaReq); err != nil {
+			return err // todo: wrap
+		}
 		return nil
 	}
 }
 
 func (p *Processor) processChunk(
 	parentCtx context.Context,
-	key string,
+	key multishard.Key,
 	f multipart.File,
 	serverID multishard.ServerIDX,
 	size int,
 	offset int64,
 ) error {
-	maxReadLen := minBufSize(size, maxBufSize)
-	readBuf := make([]byte, maxReadLen)
-	sendBuf := &bytes.Buffer{}
-
 	var wg sync.WaitGroup
 	readyCh := make(chan struct{})
 	errCh := make(chan error, 1)
+
+	sendBuf := &bytes.Buffer{}
 
 	// cancel will be called on function exit, thus remoteStorage.Put will receive done signal
 	// in case write was not finished
@@ -140,30 +157,8 @@ func (p *Processor) processChunk(
 	go func() {
 		defer wg.Done()
 
-		written := 0
-		bytesRead := 0
-		for {
-			n, err := f.ReadAt(readBuf, offset)
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					return
-				} else {
-					errCh <- err
-				}
-			}
-
-			bytesRead += n
-			if bytesRead < size {
-				sendBuf.Write(readBuf[:n])
-				written += n
-			} else {
-				sendBuf.Write(readBuf[:size-written])
-				written = size
-			}
-
-			if written >= size {
-				return
-			}
+		if err := p.send(f, sendBuf, size, offset); err != nil {
+			errCh <- err
 		}
 	}()
 
@@ -179,6 +174,41 @@ func (p *Processor) processChunk(
 		return nil
 	case err := <-errCh:
 		return err
+	}
+}
+
+func (p *Processor) send(f multipart.File, w io.Writer, size int, offset int64) error {
+	maxReadLen := minBufSize(size, maxBufSize)
+	readBuf := make([]byte, maxReadLen)
+
+	written := 0
+	bytesRead := 0
+	for {
+		n, err := f.ReadAt(readBuf, offset)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			} else {
+				return err
+			}
+		}
+
+		bytesRead += n
+		if bytesRead < size {
+			if _, err := w.Write(readBuf[:n]); err != nil {
+				return err
+			}
+			written += n
+		} else {
+			if _, err := w.Write(readBuf[:size-written]); err != nil {
+				return err
+			}
+			written = size
+		}
+
+		if written >= size {
+			return nil
+		}
 	}
 }
 

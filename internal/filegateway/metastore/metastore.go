@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/denismitr/shardstore/internal/common/logger"
+	"github.com/denismitr/shardstore/internal/filegateway/multishard"
 	"os"
 	"sync"
 )
@@ -31,8 +32,26 @@ type Shard struct {
 }
 
 type StoreRequest struct {
-	Key    string  `json:"key"`
+	Key string `json:"key"`
+
+	// Shards represent a shard for every chunk
 	Shards []Shard `json:"shards"`
+}
+
+func NewStoreRequest(key multishard.Key, chunks int) *StoreRequest {
+	return &StoreRequest{
+		Key:    string(key),
+		Shards: make([]Shard, chunks),
+	}
+}
+
+func (req *StoreRequest) SetShard(chunkIdx int, shard Shard) error {
+	if chunkIdx > len(req.Shards)-1 || chunkIdx < 0 {
+		return fmt.Errorf("invalid chunk idx %d", chunkIdx)
+	}
+
+	req.Shards[chunkIdx] = shard
+	return nil
 }
 
 func (s *TmpMetaStore) Store(ctx context.Context, req *StoreRequest) error {

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/caarlos0/env"
+	"github.com/denismitr/shardstore/internal/common/closer"
 	"github.com/denismitr/shardstore/internal/common/logger"
 	"github.com/denismitr/shardstore/internal/filegateway/config"
 	"github.com/denismitr/shardstore/internal/filegateway/httpserver"
@@ -21,6 +22,8 @@ func main() {
 	}
 
 	lg := logger.NewStdoutLogger(logger.Env(cfg.AppEnv), cfg.AppName)
+
+	defer closer.CloseAll()
 
 	shardManager, err := shardmanager.NewShardManager(cfg, lg)
 	if err != nil {

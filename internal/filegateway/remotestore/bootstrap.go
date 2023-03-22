@@ -3,6 +3,7 @@ package remotestore
 import (
 	"context"
 	"fmt"
+	"github.com/denismitr/shardstore/internal/common/closer"
 	"github.com/denismitr/shardstore/internal/filegateway/config"
 	"github.com/denismitr/shardstore/internal/filegateway/multishard"
 	storeserverv1 "github.com/denismitr/shardstore/pkg/storeserver/v1"
@@ -18,6 +19,9 @@ func bootstrapClients(cfg *config.Config) (map[multishard.ServerIDX]storeserverv
 			return nil, err
 		}
 		result[multishard.ServerIDX(idx)] = storeserverv1.NewUploadServiceClient(conn)
+		closer.Add(func() error {
+			return conn.Close()
+		})
 	}
 	return result, nil
 }
