@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package file;
+
+option go_package = "github.com/denismitr/shardstore/pkg/storeserver/v1;storeserverv1";
+
+service UploadService {
+  rpc Upload(stream UploadRequest) returns (UploadResponse) {}
+}
+
+message UploadRequest {
+  string key = 1;
+  bytes payload = 2;
+}
+
+message UploadResponse {
+  uint32 checksum = 1;
+}
