@@ -25,13 +25,21 @@ build:
 	go build -o bin/filestore cmd/filestore/main.go
 
 .PHONY: up
-up:
-	docker-compose -f docker-compose-local.yml up -d --build
+up: deps
+	docker-compose -f docker-compose-local.yaml up -d --build
 
 .PHONY: down
 down:
-	docker-compose -f docker-compose-local.yml down --remove-orphans
+	docker-compose -f docker-compose-local.yaml down --remove-orphans
 
 .PHONY: docker-remove
 docker-remove:
 	docker rm --force `docker ps -a -q` || true
+
+.PHONY: test
+test:
+	go test -v ./...
+
+.PHONY: upload
+upload:
+	curl -X PUT -F 'file=@./samples/1.png' http://localhost:8080/upload

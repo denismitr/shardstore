@@ -2,9 +2,11 @@ package main
 
 import (
 	"github.com/caarlos0/env"
+	"github.com/denismitr/shardstore/internal/common/logger"
 	"github.com/denismitr/shardstore/internal/filestore/config"
 	"github.com/denismitr/shardstore/internal/filestore/uploadserver"
 	"log"
+	"os"
 )
 
 func main() {
@@ -13,9 +15,11 @@ func main() {
 		log.Fatalf("failed to retrieve env variables, %v", err)
 	}
 
-	//todo: use zero log
-	uploadSrv := uploadserver.NewServer(cfg)
-	if err := uploadserver.StartGRPCServer(cfg, uploadSrv); err != nil {
-		log.Fatal(err)
+	lg := logger.NewStdoutLogger(logger.Env(cfg.AppEnv), cfg.AppName)
+
+	uploadSrv := uploadserver.NewServer(cfg, lg)
+	if err := uploadserver.StartGRPCServer(cfg, lg, uploadSrv); err != nil {
+		lg.Error(err)
+		os.Exit(1)
 	}
 }

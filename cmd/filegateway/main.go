@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/caarlos0/env"
 	"github.com/denismitr/shardstore/internal/common/closer"
 	"github.com/denismitr/shardstore/internal/common/logger"
@@ -45,9 +44,9 @@ func main() {
 
 	p := processor.NewProcessor(cfg, shardManager, grpcRemoteStore, metaStore)
 
-	server := httpserver.NewServer(cfg, p)
+	server := httpserver.NewServer(cfg, lg, p)
 	if err := server.Start(); err != nil {
-		fmt.Println(err)
+		lg.Error(err)
 		os.Exit(1)
 	}
 }

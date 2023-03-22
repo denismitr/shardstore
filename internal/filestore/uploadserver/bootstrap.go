@@ -2,18 +2,18 @@ package uploadserver
 
 import (
 	"fmt"
+	"github.com/denismitr/shardstore/internal/common/logger"
 	"github.com/denismitr/shardstore/internal/filestore/config"
 	storeserverv1 "github.com/denismitr/shardstore/pkg/storeserver/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"log"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
-func StartGRPCServer(cfg *config.Config, uploadSrv *Server) error {
+func StartGRPCServer(cfg *config.Config, lg logger.Logger, uploadSrv *Server) error {
 	s := grpc.NewServer()
 	if cfg.ReflectionAPI {
 		reflection.Register(s)
@@ -28,7 +28,7 @@ func StartGRPCServer(cfg *config.Config, uploadSrv *Server) error {
 
 	go func() {
 		if err := s.Serve(l); err != nil {
-			log.Fatalf("error service grpc server, err: %v", err)
+			lg.Error(fmt.Errorf("error service grpc server, err: %v", err))
 		}
 	}()
 

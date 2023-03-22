@@ -38,7 +38,7 @@ func (sm *ShardManager) GetMultiShard(key multishard.Key) (multishard.MultiShard
 	serverIdx := hash.Sum64String(string(key)) % uint64(sm.servers)
 	ms := make(multishard.MultiShard, chunks)
 
-	for chunkIdx := 0; chunkIdx < chunkIdx; chunkIdx++ {
+	for chunkIdx := 0; chunkIdx < chunks; chunkIdx++ {
 		ms[multishard.ChunkIDX(chunkIdx)] = multishard.ServerIDX(serverIdx)
 		if serverIdx < uint64(sm.servers)-1 {
 			serverIdx++

@@ -24,6 +24,10 @@ func (f *BufferStorage) Write(ctx context.Context, chunk []byte) error {
 	return err
 }
 
-func (f *BufferStorage) Flush(ctx context.Context) error {
+func (f *BufferStorage) FSync() error {
+	return nil
+}
+
+func (f *BufferStorage) Close() error {
 	return nil
 }

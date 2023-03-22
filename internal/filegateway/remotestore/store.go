@@ -64,18 +64,34 @@ func (s *GRPCStore) Put(
 	buf := make([]byte, bufSize)
 	bytesSend := 0
 	for {
+		if errCtx := ctx.Err(); errCtx != nil {
+			return errCtx
+		}
+
 		n, err := r.Read(buf)
 		if err != nil {
-			s.lg.Error(err)
-			break
+			if !errors.Is(err, io.EOF) {
+				return fmt.Errorf("failed to read into buffer: %w", err)
+			}
+
+			if bytesSend < size {
+				continue
+			} else {
+				break
+			}
+		}
+
+		payload := buf[:n]
+		if len(payload) == 0 {
+			return fmt.Errorf("payload len of buf for n %d is 0", n)
 		}
 
 		if err := upload.Send(&storeserverv1.UploadRequest{
 			Key:     string(key),
-			Payload: buf[:n],
+			Payload: payload,
 		}); err != nil {
 			if errCloseSend := upload.CloseSend(); errCloseSend != nil {
-				s.lg.Error(err)
+				s.lg.Error(errCloseSend)
 			}
 			return fmt.Errorf("failed to send a chunk of data for key %s: %w", key, err) // todo: wrap
 		}
@@ -87,7 +103,7 @@ func (s *GRPCStore) Put(
 	}
 
 	if _, err := upload.CloseAndRecv(); err != nil {
-		return err
+		return fmt.Errorf("failed to close and recv the upload: %w", err)
 	}
 
 	return nil

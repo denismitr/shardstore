@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/denismitr/shardstore/internal/filegateway/config"
 	"github.com/denismitr/shardstore/internal/filegateway/metastore"
 	"github.com/denismitr/shardstore/internal/filegateway/multishard"
 	"io"
 	"mime/multipart"
 	"sync"
+	"time"
 )
 
 const (
@@ -21,7 +23,13 @@ type shardManager interface {
 }
 
 type remoteStorage interface {
-	Put(ctx context.Context, key multishard.Key, serverID multishard.ServerIDX, size int, r io.Reader) error
+	Put(
+		ctx context.Context,
+		key multishard.Key,
+		serverID multishard.ServerIDX,
+		size int,
+		r io.Reader,
+	) error
 }
 
 type metaStorage interface {
@@ -134,6 +142,10 @@ func (p *Processor) processChunk(
 	size int,
 	offset int64,
 ) error {
+	if size == 0 {
+		return fmt.Errorf("how can size be 0")
+	}
+
 	var wg sync.WaitGroup
 	readyCh := make(chan struct{})
 	errCh := make(chan error, 1)
@@ -142,7 +154,7 @@ func (p *Processor) processChunk(
 
 	// cancel will be called on function exit, thus remoteStorage.Put will receive done signal
 	// in case write was not finished
-	ctx, cancel := context.WithCancel(parentCtx)
+	ctx, cancel := context.WithTimeout(parentCtx, 5*time.Second)
 	defer cancel()
 
 	wg.Add(1)

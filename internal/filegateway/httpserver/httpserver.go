@@ -3,6 +3,7 @@ package httpserver
 import (
 	"context"
 	"fmt"
+	"github.com/denismitr/shardstore/internal/common/logger"
 	"github.com/denismitr/shardstore/internal/filegateway/config"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -20,12 +21,13 @@ type processor interface {
 
 type Server struct {
 	cfg    *config.Config
+	lg     logger.Logger
 	router *chi.Mux
 	p      processor
 }
 
-func NewServer(cfg *config.Config, p processor) *Server {
-	s := &Server{cfg: cfg, p: p}
+func NewServer(cfg *config.Config, lg logger.Logger, p processor) *Server {
+	s := &Server{cfg: cfg, p: p, lg: lg}
 	s.setupRoutes()
 	return s
 }
@@ -34,37 +36,42 @@ func (s *Server) uploadFile(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("File Upload Endpoint Hit")
 
 	if err := r.ParseMultipartForm(s.cfg.MaxFileSize); err != nil {
-		fmt.Fprintf(w, "error parsing updloaded file: %s", err.Error())
+		s.lg.Error(fmt.Errorf("error parsing updloaded file: %w", err))
 		http.Error(w, http.StatusText(400), 400)
 		return
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
+		s.lg.Error(fmt.Errorf("error retrieving updloaded file: %w", err))
 		http.Error(w, http.StatusText(400), 400)
-		fmt.Fprintf(w, "error retrieving updloaded file: %s", err.Error())
 		return
 	}
-	defer file.Close()
 
-	fmt.Printf("Uploaded File: %+v\n", header.Filename)
-	fmt.Printf("File Size: %+v\n", header.Size)
-	fmt.Printf("MIME Header: %+v\n", header.Header)
+	defer func() {
+		if err := file.Close(); err != nil {
+			s.lg.Error(err)
+		}
+	}()
+
+	s.lg.Debugf("Uploaded File: %+v\n", header.Filename)
+	s.lg.Debugf("File Size: %+v\n", header.Size)
+	s.lg.Debugf("MIME Header: %+v\n", header.Header)
 
 	if err := s.p.Process(r.Context(), file, header); err != nil {
 		http.Error(w, http.StatusText(500), 500)
-		fmt.Fprintf(w, "error processing updloaded file: %s", err.Error())
+		s.lg.Error(fmt.Errorf("error processing updloaded file: %w", err))
 		return
 	}
 
-	fmt.Fprintf(w, "Successfully Uploaded File\n")
+	s.lg.Debugf("Successfully Uploaded File")
 }
 
 func (s *Server) setupRoutes() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Put("/upload/{bucket:[1-9-a-z-]+}", s.uploadFile)
+	r.Put("/upload", s.uploadFile)
 	s.router = r
 }
 

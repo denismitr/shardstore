@@ -32,7 +32,7 @@ func connect(cfg *config.Config, remoteServer string) (*grpc.ClientConn, error) 
 
 	credentials := grpc.WithTransportCredentials(insecure.NewCredentials())
 
-	conn, err := grpc.DialContext(ctx, remoteServer, credentials)
+	conn, err := grpc.DialContext(ctx, remoteServer, credentials, grpc.WithBlock())
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to remote storag server %s: %w", remoteServer, err)
 	}

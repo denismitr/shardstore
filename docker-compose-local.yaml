@@ -9,7 +9,7 @@ services:
       - "8080:8080"
     environment:
       FG_NUMBER_OF_CHUNKS: 3
-      STORAGE_SERVERS: "localhost:9000;localhost:9001;localhost:9002"
+      STORAGE_SERVERS: "filestore1:9000;filestore2:9001;filestore3:9002"
     depends_on:
       - filestore1
       - filestore2

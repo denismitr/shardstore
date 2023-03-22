@@ -3,14 +3,13 @@ FROM golang:latest as builder
 WORKDIR /build
 
 COPY go.mod go.sum ./
-
-RUN go mod download
-RUN go mod verify
+COPY vendor/ ./vendor
 
 COPY cmd/ ./cmd
 COPY internal/ ./internal
+COPY pkg/ ./pkg
 
-RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o -o filegateway ./cmd/filegateway/main.go
+RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o filegateway ./cmd/filegateway/main.go
 
 FROM alpine:latest
 
