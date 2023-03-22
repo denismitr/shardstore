@@ -23,3 +23,15 @@ deps:
 build:
 	go build -o bin/filegateway cmd/filegateway/main.go
 	go build -o bin/filestore cmd/filestore/main.go
+
+.PHONY: up
+up:
+	docker-compose -f docker-compose-local.yml up -d --build
+
+.PHONY: down
+down:
+	docker-compose -f docker-compose-local.yml down --remove-orphans
+
+.PHONY: docker-remove
+docker-remove:
+	docker rm --force `docker ps -a -q` || true

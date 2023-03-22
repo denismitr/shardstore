@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"github.com/denismitr/shardstore/internal/filegateway/config"
+	"github.com/denismitr/shardstore/internal/filegateway/metastore"
 	"github.com/denismitr/shardstore/internal/filegateway/multishard"
 	"io"
 	"mime/multipart"
@@ -19,18 +20,33 @@ type shardManager interface {
 	GetMultiShard(key string) (multishard.MultiShard, error)
 }
 
-type store interface {
+type remoteStorage interface {
 	Put(ctx context.Context, key string, serverID multishard.ServerIDX, size int, r io.Reader) error
+}
+
+type metaStorage interface {
+	Store(ctx context.Context, req *metastore.StoreRequest) error
 }
 
 type Processor struct {
 	cfg          *config.Config
 	shardManager shardManager
-	store        store
+	remoteStore  remoteStorage
+	metaStore    metaStorage
 }
 
-func NewProcessor(cfg *config.Config, shardManager shardManager, store store) *Processor {
-	return &Processor{cfg: cfg, shardManager: shardManager, store: store}
+func NewProcessor(
+	cfg *config.Config,
+	shardManager shardManager,
+	remoteStore remoteStorage,
+	metaStore metaStorage,
+) *Processor {
+	return &Processor{
+		cfg:          cfg,
+		shardManager: shardManager,
+		remoteStore:  remoteStore,
+		metaStore:    metaStore,
+	}
 }
 
 func (p *Processor) Process(
@@ -107,7 +123,7 @@ func (p *Processor) processChunk(
 	readyCh := make(chan struct{})
 	errCh := make(chan error, 1)
 
-	// cancel will be called on function exit, thus store.Put will receive done signal
+	// cancel will be called on function exit, thus remoteStorage.Put will receive done signal
 	// in case write was not finished
 	ctx, cancel := context.WithCancel(parentCtx)
 	defer cancel()
@@ -115,7 +131,7 @@ func (p *Processor) processChunk(
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := p.store.Put(ctx, key, serverID, size, sendBuf); err != nil {
+		if err := p.remoteStore.Put(ctx, key, serverID, size, sendBuf); err != nil {
 			errCh <- err
 		}
 	}()

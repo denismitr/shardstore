@@ -4,20 +4,27 @@ import (
 	"errors"
 	"fmt"
 	hash "github.com/cespare/xxhash/v2"
+	"github.com/denismitr/shardstore/internal/common/logger"
 	"github.com/denismitr/shardstore/internal/filegateway/config"
 	"github.com/denismitr/shardstore/internal/filegateway/multishard"
 )
 
 type ShardManager struct {
 	cfg     *config.Config
+	lg      logger.Logger
 	servers int
 }
 
-func NewShardManager(cfg *config.Config) *ShardManager {
+func NewShardManager(cfg *config.Config, lg logger.Logger) (*ShardManager, error) {
+	if len(cfg.StorageServers) < int(cfg.NumberOfChunks) {
+		return nil, fmt.Errorf("less servers than number of chunks: %w", ErrInvalidNumberOfServers)
+	}
+
 	return &ShardManager{
 		cfg:     cfg,
+		lg:      lg,
 		servers: len(cfg.StorageServers),
-	}
+	}, nil
 }
 
 var ErrInvalidNumberOfServers = errors.New("invalid number of servers")

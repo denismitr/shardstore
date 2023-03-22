@@ -3,6 +3,8 @@ package remotestore
 import (
 	"context"
 	"errors"
+	"fmt"
+	"github.com/denismitr/shardstore/internal/common/logger"
 	"github.com/denismitr/shardstore/internal/filegateway/config"
 	"github.com/denismitr/shardstore/internal/filegateway/multishard"
 	storeserverv1 "github.com/denismitr/shardstore/pkg/storeserver/v1"
@@ -14,16 +16,18 @@ type GRPCStore struct {
 	cfg    *config.Config
 	client map[multishard.ServerIDX]storeserverv1.UploadServiceClient
 	mx     sync.RWMutex
+	lg     logger.Logger
 }
 
 func NewGRPCStore(
 	cfg *config.Config,
+	lg logger.Logger,
 ) (*GRPCStore, error) {
 	clients, err := bootstrapClients(cfg)
 	if err != nil {
 		return nil, err
 	}
-	return &GRPCStore{cfg: cfg, client: clients}, nil
+	return &GRPCStore{cfg: cfg, client: clients, lg: lg}, nil
 }
 
 var (
@@ -54,7 +58,7 @@ func (s *GRPCStore) Put(
 
 	upload, err := client.Upload(ctx)
 	if err != nil {
-		return err // todo: wrap
+		return fmt.Errorf("failed to obtain upload client: %w", err)
 	}
 
 	buf := make([]byte, bufSize)
@@ -62,6 +66,7 @@ func (s *GRPCStore) Put(
 	for {
 		n, err := r.Read(buf)
 		if err != nil {
+			s.lg.Error(err)
 			break
 		}
 
@@ -69,8 +74,10 @@ func (s *GRPCStore) Put(
 			Key:     key,
 			Payload: buf[:n],
 		}); err != nil {
-			_ = upload.CloseSend()
-			return err // todo: wrap
+			if errCloseSend := upload.CloseSend(); errCloseSend != nil {
+				s.lg.Error(err)
+			}
+			return fmt.Errorf("failed to send a chunk of data for key %s: %w", key, err) // todo: wrap
 		}
 
 		bytesSend += n
