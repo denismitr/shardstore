@@ -44,7 +44,23 @@ test:
 .PHONY: upload
 upload:
 	curl -X PUT -F 'file=@./samples/1.png' http://localhost:8080/files/upload
+	curl -X PUT -F 'file=@./samples/2.png' http://localhost:8080/files/upload
 
 .PHONY: download
 download:
-	curl -X GET http://localhost:8080/files/1.png --output samples/downloaded.png
+	curl -X GET http://localhost:8080/files/1.png --output samples/downloaded_1.png
+	curl -X GET http://localhost:8080/files/2.png --output samples/downloaded_2.png
+
+.PHONY: clean
+clean: down
+	rm samples/downloaded_1.png || echo downloaded_1.png deleted
+	rm samples/downloaded_2.png || echo downloaded_2.png deleted
+
+.PHONY: wait
+wait:
+	@sleep 1
+
+.PHONY: run
+run: clean up wait upload download
+	@diff samples/1.png samples/downloaded_1.png || echo 1.png got corrupted
+	@diff samples/2.png samples/downloaded_2.png || echo 2.png got corrupted

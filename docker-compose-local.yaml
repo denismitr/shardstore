@@ -9,7 +9,7 @@ services:
       - "8080:8080"
     environment:
       FG_NUMBER_OF_CHUNKS: 3
-      STORAGE_SERVERS: "filestore1:9000;filestore2:9001;filestore3:9002"
+      FG_STORAGE_SERVERS: "filestore1:9000;filestore2:9001;filestore3:9002"
     depends_on:
       - filestore1
       - filestore2
@@ -23,7 +23,7 @@ services:
       - "9000:9000"
     environment:
       FS_APP_NAME: filestore1
-      ID: 0
+      FS_ID: 0
       FS_GRPC_PORT: 9000
 
   filestore2:
@@ -34,7 +34,7 @@ services:
       - "9001:9001"
     environment:
       FS_APP_NAME: filestore2
-      ID: 1
+      FS_ID: 1
       FS_GRPC_PORT: 9001
 
   filestore3:
@@ -45,5 +45,5 @@ services:
       - "9002:9002"
     environment:
       FS_APP_NAME: filestore3
-      ID: 2
+      FS_ID: 2
       FS_GRPC_PORT: 9002
