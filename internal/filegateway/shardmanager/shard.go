@@ -29,17 +29,17 @@ func NewShardManager(cfg *config.Config, lg logger.Logger) (*ShardManager, error
 
 var ErrInvalidNumberOfServers = errors.New("invalid number of servers")
 
-func (sm *ShardManager) GetMultiShard(key multishard.Key) (multishard.MultiShard, error) {
+func (sm *ShardManager) ResolveShardMap(key multishard.Key) (multishard.ShardMap, error) {
 	chunks := int(sm.cfg.NumberOfChunks)
 	if sm.servers < chunks {
 		return nil, fmt.Errorf("less servers than chunks: %w", ErrInvalidNumberOfServers) // todo: wrap
 	}
 
 	serverIdx := hash.Sum64String(string(key)) % uint64(sm.servers)
-	ms := make(multishard.MultiShard, chunks)
+	ms := make(multishard.ShardMap, chunks)
 
 	for chunkIdx := 0; chunkIdx < chunks; chunkIdx++ {
-		ms[multishard.ChunkIDX(chunkIdx)] = multishard.ServerIDX(serverIdx)
+		ms[multishard.ChunkIdx(chunkIdx)] = multishard.ServerIdx(serverIdx)
 		if serverIdx < uint64(sm.servers)-1 {
 			serverIdx++
 		} else {

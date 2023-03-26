@@ -2,7 +2,7 @@ FROM golang:latest as builder
 
 WORKDIR /build
 
-COPY go.mod go.sum ./
+COPY go.mod ./
 COPY vendor/ ./vendor
 
 COPY cmd/ ./cmd

@@ -5,7 +5,7 @@ PROTO_SOURCE_DIR=./api/storeserver/v1
 proto:
 	$(info making directory ${PROTO_OUT_DIR})
 	@mkdir -p ${PROTO_OUT_DIR}
-	$(info compiling protoc files into ${PROTO_SOURCE_DIR})
+	$(info compiling proto files from ${PROTO_SOURCE_DIR} into ${PROTO_OUT_DIR})
 	protoc \
 		-I ${PROTO_SOURCE_DIR} \
 		--include_imports \
@@ -21,8 +21,8 @@ deps:
 
 .PHONY: build
 build:
-	go build -o bin/filegateway cmd/filegateway/main.go
-	go build -o bin/filestore cmd/filestore/main.go
+	go build -race -o bin/filegateway cmd/filegateway/main.go
+	go build -race -o bin/filestore cmd/filestore/main.go
 
 .PHONY: up
 up: deps
@@ -38,8 +38,13 @@ docker-remove:
 
 .PHONY: test
 test:
+	$(info running unit tests)
 	go test -v ./...
 
 .PHONY: upload
 upload:
-	curl -X PUT -F 'file=@./samples/1.png' http://localhost:8080/upload
+	curl -X PUT -F 'file=@./samples/1.png' http://localhost:8080/files/upload
+
+.PHONY: download
+download:
+	curl -X GET http://localhost:8080/files/1.png --output samples/downloaded.png

@@ -4,8 +4,9 @@ package file;
 
 option go_package = "github.com/denismitr/shardstore/pkg/storeserver/v1;storeserverv1";
 
-service UploadService {
+service FileService {
   rpc Upload(stream UploadRequest) returns (UploadResponse) {}
+  rpc Download(DownloadRequest) returns (stream DownloadResponse) {}
 }
 
 message UploadRequest {
@@ -13,6 +14,15 @@ message UploadRequest {
   bytes payload = 2;
 }
 
+message DownloadRequest {
+  string key = 1;
+}
+
 message UploadResponse {
+  // todo
   uint32 checksum = 1;
+}
+
+message DownloadResponse {
+  bytes payload = 1;
 }

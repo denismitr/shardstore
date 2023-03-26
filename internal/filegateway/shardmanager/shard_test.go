@@ -22,7 +22,7 @@ func TestShardManager_GetMultiShard(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    multishard.MultiShard
+		want    multishard.ShardMap
 		wantErr bool
 	}{
 		{
@@ -35,7 +35,7 @@ func TestShardManager_GetMultiShard(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			want:    multishard.MultiShard{0: 1, 1: 2, 2: 0},
+			want:    multishard.ShardMap{0: 1, 1: 2, 2: 0},
 			args: args{
 				key: "1_png",
 			},
@@ -50,7 +50,7 @@ func TestShardManager_GetMultiShard(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			want:    multishard.MultiShard{0: 7, 1: 0, 2: 1},
+			want:    multishard.ShardMap{0: 7, 1: 0, 2: 1},
 			args: args{
 				key: "2_png",
 			},
@@ -65,7 +65,7 @@ func TestShardManager_GetMultiShard(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			want:    multishard.MultiShard{0: 2, 1: 3, 2: 4},
+			want:    multishard.ShardMap{0: 2, 1: 3, 2: 4},
 			args: args{
 				key: "my_text_txt",
 			},
@@ -79,14 +79,14 @@ func TestShardManager_GetMultiShard(t *testing.T) {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}
 
-			got, err := sm.GetMultiShard(tt.args.key)
+			got, err := sm.ResolveShardMap(tt.args.key)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GetMultiShard() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ResolveShardMap() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetMultiShard() got = %v, want %v", got, tt.want)
+				t.Errorf("ResolveShardMap() got = %v, want %v", got, tt.want)
 			}
 		})
 	}

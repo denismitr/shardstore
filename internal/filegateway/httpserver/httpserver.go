@@ -7,34 +7,62 @@ import (
 	"github.com/denismitr/shardstore/internal/filegateway/config"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"io"
 	"mime/multipart"
 	"net/http"
 )
 
-type processor interface {
-	Process(
+type fileUploader interface {
+	Upload(
 		ctx context.Context,
 		f multipart.File,
 		h *multipart.FileHeader,
 	) error
 }
 
-type Server struct {
-	cfg    *config.Config
-	lg     logger.Logger
-	router *chi.Mux
-	p      processor
+type fileDownloader interface {
+	Download(
+		ctx context.Context,
+		fileName string,
+		w io.Writer,
+	) (int, error)
 }
 
-func NewServer(cfg *config.Config, lg logger.Logger, p processor) *Server {
-	s := &Server{cfg: cfg, p: p, lg: lg}
+type Server struct {
+	cfg        *config.Config
+	lg         logger.Logger
+	router     *chi.Mux
+	uploader   fileUploader
+	downloader fileDownloader
+}
+
+func NewServer(
+	cfg *config.Config,
+	lg logger.Logger,
+	fu fileUploader,
+	fd fileDownloader,
+) *Server {
+	s := &Server{cfg: cfg, uploader: fu, lg: lg, downloader: fd}
 	s.setupRoutes()
 	return s
 }
 
-func (s *Server) uploadFile(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("File Upload Endpoint Hit")
+func (s *Server) downloadFile(w http.ResponseWriter, r *http.Request) {
+	file := chi.URLParam(r, "file")
+	w.WriteHeader(200)
+	w.Header().Set("content-type", "application/force-download") // todo: maybe to store mime types
+	w.Header().Set("content-disposition", `attachment; filename="`+file+`"`)
+	//w.Header().Set("content-length", fmt.Sprintf("%d", downloaded))
 
+	_, err := s.downloader.Download(r.Context(), file, w)
+	if err != nil {
+		// todo: check not found error
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+}
+
+func (s *Server) uploadFile(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(s.cfg.MaxFileSize); err != nil {
 		s.lg.Error(fmt.Errorf("error parsing updloaded file: %w", err))
 		http.Error(w, http.StatusText(400), 400)
@@ -54,24 +82,25 @@ func (s *Server) uploadFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	s.lg.Debugf("Uploaded File: %+v\n", header.Filename)
-	s.lg.Debugf("File Size: %+v\n", header.Size)
-	s.lg.Debugf("MIME Header: %+v\n", header.Header)
+	s.lg.Debugf("uploaded file name: %s\n", header.Filename)
+	s.lg.Debugf("file size: %d\n", header.Size)
+	s.lg.Debugf("MIME header: %+v\n", header.Header)
 
-	if err := s.p.Process(r.Context(), file, header); err != nil {
+	if err := s.uploader.Upload(r.Context(), file, header); err != nil {
 		http.Error(w, http.StatusText(500), 500)
 		s.lg.Error(fmt.Errorf("error processing updloaded file: %w", err))
 		return
 	}
 
-	s.lg.Debugf("Successfully Uploaded File")
+	s.lg.Debugf("successfully uploaded file")
 }
 
 func (s *Server) setupRoutes() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-	r.Put("/upload", s.uploadFile)
+	r.Put("/files/upload", s.uploadFile)
+	r.Get("/files/{file}", s.downloadFile)
 	s.router = r
 }
 

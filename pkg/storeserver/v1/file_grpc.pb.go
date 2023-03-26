@@ -18,45 +18,46 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// UploadServiceClient is the client API for UploadService service.
+// FileServiceClient is the client API for FileService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type UploadServiceClient interface {
-	Upload(ctx context.Context, opts ...grpc.CallOption) (UploadService_UploadClient, error)
+type FileServiceClient interface {
+	Upload(ctx context.Context, opts ...grpc.CallOption) (FileService_UploadClient, error)
+	Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (FileService_DownloadClient, error)
 }
 
-type uploadServiceClient struct {
+type fileServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewUploadServiceClient(cc grpc.ClientConnInterface) UploadServiceClient {
-	return &uploadServiceClient{cc}
+func NewFileServiceClient(cc grpc.ClientConnInterface) FileServiceClient {
+	return &fileServiceClient{cc}
 }
 
-func (c *uploadServiceClient) Upload(ctx context.Context, opts ...grpc.CallOption) (UploadService_UploadClient, error) {
-	stream, err := c.cc.NewStream(ctx, &UploadService_ServiceDesc.Streams[0], "/file.UploadService/Upload", opts...)
+func (c *fileServiceClient) Upload(ctx context.Context, opts ...grpc.CallOption) (FileService_UploadClient, error) {
+	stream, err := c.cc.NewStream(ctx, &FileService_ServiceDesc.Streams[0], "/file.FileService/Upload", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &uploadServiceUploadClient{stream}
+	x := &fileServiceUploadClient{stream}
 	return x, nil
 }
 
-type UploadService_UploadClient interface {
+type FileService_UploadClient interface {
 	Send(*UploadRequest) error
 	CloseAndRecv() (*UploadResponse, error)
 	grpc.ClientStream
 }
 
-type uploadServiceUploadClient struct {
+type fileServiceUploadClient struct {
 	grpc.ClientStream
 }
 
-func (x *uploadServiceUploadClient) Send(m *UploadRequest) error {
+func (x *fileServiceUploadClient) Send(m *UploadRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *uploadServiceUploadClient) CloseAndRecv() (*UploadResponse, error) {
+func (x *fileServiceUploadClient) CloseAndRecv() (*UploadResponse, error) {
 	if err := x.ClientStream.CloseSend(); err != nil {
 		return nil, err
 	}
@@ -67,53 +68,89 @@ func (x *uploadServiceUploadClient) CloseAndRecv() (*UploadResponse, error) {
 	return m, nil
 }
 
-// UploadServiceServer is the server API for UploadService service.
-// All implementations must embed UnimplementedUploadServiceServer
+func (c *fileServiceClient) Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (FileService_DownloadClient, error) {
+	stream, err := c.cc.NewStream(ctx, &FileService_ServiceDesc.Streams[1], "/file.FileService/Download", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &fileServiceDownloadClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type FileService_DownloadClient interface {
+	Recv() (*DownloadResponse, error)
+	grpc.ClientStream
+}
+
+type fileServiceDownloadClient struct {
+	grpc.ClientStream
+}
+
+func (x *fileServiceDownloadClient) Recv() (*DownloadResponse, error) {
+	m := new(DownloadResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// FileServiceServer is the server API for FileService service.
+// All implementations must embed UnimplementedFileServiceServer
 // for forward compatibility
-type UploadServiceServer interface {
-	Upload(UploadService_UploadServer) error
-	mustEmbedUnimplementedUploadServiceServer()
+type FileServiceServer interface {
+	Upload(FileService_UploadServer) error
+	Download(*DownloadRequest, FileService_DownloadServer) error
+	mustEmbedUnimplementedFileServiceServer()
 }
 
-// UnimplementedUploadServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedUploadServiceServer struct {
+// UnimplementedFileServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedFileServiceServer struct {
 }
 
-func (UnimplementedUploadServiceServer) Upload(UploadService_UploadServer) error {
+func (UnimplementedFileServiceServer) Upload(FileService_UploadServer) error {
 	return status.Errorf(codes.Unimplemented, "method Upload not implemented")
 }
-func (UnimplementedUploadServiceServer) mustEmbedUnimplementedUploadServiceServer() {}
+func (UnimplementedFileServiceServer) Download(*DownloadRequest, FileService_DownloadServer) error {
+	return status.Errorf(codes.Unimplemented, "method Download not implemented")
+}
+func (UnimplementedFileServiceServer) mustEmbedUnimplementedFileServiceServer() {}
 
-// UnsafeUploadServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to UploadServiceServer will
+// UnsafeFileServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to FileServiceServer will
 // result in compilation errors.
-type UnsafeUploadServiceServer interface {
-	mustEmbedUnimplementedUploadServiceServer()
+type UnsafeFileServiceServer interface {
+	mustEmbedUnimplementedFileServiceServer()
 }
 
-func RegisterUploadServiceServer(s grpc.ServiceRegistrar, srv UploadServiceServer) {
-	s.RegisterService(&UploadService_ServiceDesc, srv)
+func RegisterFileServiceServer(s grpc.ServiceRegistrar, srv FileServiceServer) {
+	s.RegisterService(&FileService_ServiceDesc, srv)
 }
 
-func _UploadService_Upload_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(UploadServiceServer).Upload(&uploadServiceUploadServer{stream})
+func _FileService_Upload_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(FileServiceServer).Upload(&fileServiceUploadServer{stream})
 }
 
-type UploadService_UploadServer interface {
+type FileService_UploadServer interface {
 	SendAndClose(*UploadResponse) error
 	Recv() (*UploadRequest, error)
 	grpc.ServerStream
 }
 
-type uploadServiceUploadServer struct {
+type fileServiceUploadServer struct {
 	grpc.ServerStream
 }
 
-func (x *uploadServiceUploadServer) SendAndClose(m *UploadResponse) error {
+func (x *fileServiceUploadServer) SendAndClose(m *UploadResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *uploadServiceUploadServer) Recv() (*UploadRequest, error) {
+func (x *fileServiceUploadServer) Recv() (*UploadRequest, error) {
 	m := new(UploadRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -121,18 +158,44 @@ func (x *uploadServiceUploadServer) Recv() (*UploadRequest, error) {
 	return m, nil
 }
 
-// UploadService_ServiceDesc is the grpc.ServiceDesc for UploadService service.
+func _FileService_Download_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(DownloadRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(FileServiceServer).Download(m, &fileServiceDownloadServer{stream})
+}
+
+type FileService_DownloadServer interface {
+	Send(*DownloadResponse) error
+	grpc.ServerStream
+}
+
+type fileServiceDownloadServer struct {
+	grpc.ServerStream
+}
+
+func (x *fileServiceDownloadServer) Send(m *DownloadResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+// FileService_ServiceDesc is the grpc.ServiceDesc for FileService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var UploadService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "file.UploadService",
-	HandlerType: (*UploadServiceServer)(nil),
+var FileService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "file.FileService",
+	HandlerType: (*FileServiceServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Upload",
-			Handler:       _UploadService_Upload_Handler,
+			Handler:       _FileService_Upload_Handler,
 			ClientStreams: true,
+		},
+		{
+			StreamName:    "Download",
+			Handler:       _FileService_Download_Handler,
+			ServerStreams: true,
 		},
 	},
 	Metadata: "file.proto",

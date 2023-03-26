@@ -10,5 +10,5 @@ type Config struct {
 	MaxFileSize          int64         `env:"FG_MAX_FILE_SIZE" envDefault:"10485760"` // 10Mb
 	NumberOfChunks       int64         `env:"FG_NUMBER_OF_CHUNKS" envDefault:"3"`
 	StorageServers       []string      `env:"STORAGE_SERVERS" envSeparator:";" envDefault:"localhost:9000;localhost:9001;localhost:9002"`
-	StorageServerTimeout time.Duration `env:"STORAGE_SERVER_TIMEOUT" envDefault:"3s"`
+	StorageServerTimeout time.Duration `env:"STORAGE_SERVER_TIMEOUT" envDefault:"10s"`
 }

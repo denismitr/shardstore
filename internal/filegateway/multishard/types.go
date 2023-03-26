@@ -1,7 +1,7 @@
 package multishard
 
 type (
-	ChunkIDX   int
-	ServerIDX  int
-	MultiShard map[ChunkIDX]ServerIDX
+	ChunkIdx  int
+	ServerIdx int
+	ShardMap  map[ChunkIdx]ServerIdx
 )

@@ -5,11 +5,12 @@ import (
 	"github.com/denismitr/shardstore/internal/common/closer"
 	"github.com/denismitr/shardstore/internal/common/logger"
 	"github.com/denismitr/shardstore/internal/filegateway/config"
+	"github.com/denismitr/shardstore/internal/filegateway/downloader"
 	"github.com/denismitr/shardstore/internal/filegateway/httpserver"
 	"github.com/denismitr/shardstore/internal/filegateway/metastore"
-	"github.com/denismitr/shardstore/internal/filegateway/processor"
 	"github.com/denismitr/shardstore/internal/filegateway/remotestore"
 	"github.com/denismitr/shardstore/internal/filegateway/shardmanager"
+	"github.com/denismitr/shardstore/internal/filegateway/uploader"
 	"log"
 	"os"
 )
@@ -42,9 +43,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	p := processor.NewProcessor(cfg, shardManager, grpcRemoteStore, metaStore)
+	fileUploader := uploader.NewUploader(cfg, shardManager, grpcRemoteStore, metaStore, lg)
+	fileDownloader := downloader.NewDownloader(cfg, grpcRemoteStore, metaStore, lg)
 
-	server := httpserver.NewServer(cfg, lg, p)
+	server := httpserver.NewServer(cfg, lg, fileUploader, fileDownloader)
 	if err := server.Start(); err != nil {
 		lg.Error(err)
 		os.Exit(1)

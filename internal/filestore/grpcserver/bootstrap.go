@@ -1,4 +1,4 @@
-package uploadserver
+package grpcserver
 
 import (
 	"fmt"
@@ -13,7 +13,11 @@ import (
 	"syscall"
 )
 
-func StartGRPCServer(cfg *config.Config, lg logger.Logger, uploadSrv *Server) error {
+func StartGRPCServer(
+	cfg *config.Config,
+	lg logger.Logger,
+	fileSrv *FileServer,
+) error {
 	s := grpc.NewServer()
 	if cfg.ReflectionAPI {
 		reflection.Register(s)
@@ -24,7 +28,7 @@ func StartGRPCServer(cfg *config.Config, lg logger.Logger, uploadSrv *Server) er
 		return fmt.Errorf("failed to listen tcp %d: %w", cfg.GRPCPort, err)
 	}
 
-	storeserverv1.RegisterUploadServiceServer(s, uploadSrv)
+	storeserverv1.RegisterFileServiceServer(s, fileSrv)
 
 	go func() {
 		if err := s.Serve(l); err != nil {

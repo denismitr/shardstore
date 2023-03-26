@@ -11,14 +11,14 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func bootstrapClients(cfg *config.Config) (map[multishard.ServerIDX]storeserverv1.UploadServiceClient, error) {
-	result := make(map[multishard.ServerIDX]storeserverv1.UploadServiceClient, len(cfg.StorageServers))
+func bootstrapClients(cfg *config.Config) (map[multishard.ServerIdx]storeserverv1.FileServiceClient, error) {
+	result := make(map[multishard.ServerIdx]storeserverv1.FileServiceClient, len(cfg.StorageServers))
 	for idx, remoteServer := range cfg.StorageServers {
 		conn, err := connect(cfg, remoteServer)
 		if err != nil {
 			return nil, err
 		}
-		result[multishard.ServerIDX(idx)] = storeserverv1.NewUploadServiceClient(conn)
+		result[multishard.ServerIdx(idx)] = storeserverv1.NewFileServiceClient(conn)
 		closer.Add(func() error {
 			return conn.Close()
 		})
